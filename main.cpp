@@ -7,8 +7,6 @@
 SIM800<HardwareSerial> SIM(&Serial);
 RCSwitch radioTransmitter = RCSwitch();
 
-int statusLED = 0;
-
 void sim800IncomingCall(char *);
 void sim800IncomingSMS(char *, char *);
 void sim800IncomingDTMF(char, int);
@@ -25,7 +23,7 @@ void setup() {
    Serial.begin(9600);
    Serial.println(F("AT"));
    SIM.waitResponse();
-   //Serial.println(F("AT+DDET=1,0,1")); //Enable DTMF key duration info. AT&W_SAVE
+   Serial.println(F("AT+DDET=1,0,1")); //Enable DTMF key duration info. AT&W_SAVE //Doesn't properly save on R13.08. Got 1,0,0 instead of 1,0,1 - duration missing after reboot.
 
    Serial.println(F("AT+CLIP=1")); //Enable the calling line identity (CLI) NO_SAVE
    //Serial.println(F("AT+CMEE=1")); //Error reporting (1 - Enable +CME ERROR: <err> result code and use numeric) AT&W_SAVE
@@ -33,7 +31,6 @@ void setup() {
    //Serial.println(F("ATV0")); //Status reporting (ATV0 - digital codes, ATV1 - text) AT&W_SAVE
    //Serial.println(F("ATE0")); //Disable command echo to terminal AT&W_SAVE
 
-   pinMode(LED_PIN, OUTPUT);
    pinMode(TRANSMITTER_PIN, OUTPUT);
 
    SIM.setIncomingCallHandler(sim800IncomingCall);
@@ -47,31 +44,11 @@ void loop() {
 }
 
 
-
 //Handlers here
 void sim800IncomingCall(char *number)
 {
-   Serial.println(F("ATH"));
-
-   radioTransmitter.sendTriState("0FF1FFF00100");
-
-   if (statusLED == 0) {
-      digitalWrite(LED_PIN, HIGH);
-      statusLED = 1;
-   } else {
-      digitalWrite(LED_PIN, LOW);
-      statusLED = 0;
-   }
-
-   /*
     Serial.println(F("ATA")); //Off-hook (answer)
-    Serial.println(F("AT+VTS=\"5,5,5\"")); //Play DTMF to the line
-
-    if (strcmp(number, "71234567890") == 0) {
-        //Do something...
-        return;
-    }
-    */
+    Serial.println(F("AT+VTS=\"1,5,9\"")); //Play DTMF to the line
 }
 
 void sim800IncomingSMS(char *number, char *text)
@@ -87,8 +64,23 @@ void sim800IncomingSMS(char *number, char *text)
 
 void sim800IncomingDTMF(char key, int duration)
 {
-    if (key == '*') {
-        Serial.println(F("ATH")); //Hang Up call
+
+    switch (key) {
+        case '*':
+            Serial.println(F("ATH")); //Hang Up call
+            break;
+        case '1': //Channel A
+            radioTransmitter.sendTriState("0FF1FFF01000");
+            break;
+        case '2': //Channel B
+            radioTransmitter.sendTriState("0FF1FFF00001");
+            break;
+        case '3': //Channel C
+            radioTransmitter.sendTriState("0FF1FFF00010");
+            break;
+        case '4': //Channel D
+            radioTransmitter.sendTriState("0FF1FFF00100");
+            break;
     }
-    //... some logic here ...
+
 }
